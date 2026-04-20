@@ -47,7 +47,7 @@ func main() {
 	case "doctor":
 		os.Exit(cmdDoctor(os.Args[2:]))
 	case "version", "--version", "-v":
-		fmt.Println(version)
+		cmdVersion()
 	case "init":
 		os.Exit(cmdInit(os.Args[2:]))
 	case "hook":
@@ -59,6 +59,16 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
+}
+
+func cmdVersion() {
+	const logo = `╻ ╻┏━┓┏━╸╻
+┃╻┃┣━┫┣╸ ┃
+┗┻┛╹ ╹╹  ┗`
+	fmt.Println(logo)
+	fmt.Println()
+	fmt.Printf("wafi v%s — sufficient output, efficient tokens\n", version)
+	fmt.Println("https://github.com/helmif/wafi")
 }
 
 func usage() {

@@ -1,102 +1,197 @@
-# wafi — sufficient output, efficient tokens
+```
+╻ ╻┏━┓┏━╸╻
+┃╻┃┣━┫┣╸ ┃
+┗┻┛╹ ╹╹  ┗
+```
 
-wafi (وافي — Arabic for *sufficient*, *complete*, *faithful*) is a local CLI
-proxy that wraps noisy shell commands and returns a compact, deterministic
-summary to the tool or agent that called it. It exists because AI coding
-tools spend more tokens reading command output than writing code, and most
-of that output is ceremony — progress bars, hint lines, ASCII trees — that
-the AI neither needs nor rereads. wafi strips the ceremony and keeps the
-signal. No LLM, no network, no telemetry. Single static Go binary.
+> sufficient output. efficient tokens.
+> وافي — Arabic for "sufficient, adequate, complete"
+
+![Go](https://img.shields.io/badge/go-1.22+-00ADD8?logo=go&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Release](https://img.shields.io/github/v/release/helmif/wafi)
+
+wafi sits between Claude Code and your shell. It filters noise from command output before it reaches the AI — deterministically, locally, with zero risk.
+
+---
+
+## Before / After
+
+**Before** — `git log` (raw, ~400 tokens)
+```
+commit e409609f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d
+Author: Helmi Fauzi <helmi@example.com>
+Date:   Sun Apr 20 10:00:00 2026 +0700
+
+    phase-4: git diff filter (context lines dropped, headers preserved)
+
+commit 277e73e2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e
+Author: Helmi Fauzi <helmi@example.com>
+Date:   Sat Apr 19 15:30:00 2026 +0700
+
+    phase-3: git_status fixtures, golden tests, 96% filter coverage
+```
+
+**After** — `wafi run git log` (~30 tokens)
+```
+e409609 phase-4: git diff filter (context lines dropped, headers preserved) (helmif, 1 day ago)
+277e73e phase-3: git_status fixtures, golden tests, 96% filter coverage (helmif, 2 days ago)
+```
+
+---
+
+**Before** — `git status` (raw, ~120 tokens)
+```
+On branch feature/auth
+Your branch is up to date with 'origin/feature/auth'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/auth.go
+	modified:   src/user.go
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	src/new.go
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+
+**After** — `wafi run git status` (~20 tokens)
+```
+branch: feature/auth
+upstream: origin/feature/auth (clean)
+unstaged:
+  M src/auth.go
+  M src/user.go
+untracked:
+  src/new.go
+```
+
+---
 
 ## Install
 
+### macOS
+
 ```bash
-brew install helmif/tap/wafi      # coming soon
+# Homebrew (recommended)
+brew tap helmif/tap
+brew install helmif/tap/wafi
+
+# Apple Silicon — direct
+curl -L https://github.com/helmif/wafi/releases/download/v0.1.0/wafi-darwin-arm64 -o wafi
+chmod +x wafi && sudo mv wafi /usr/local/bin/
+
+# Intel — direct
+curl -L https://github.com/helmif/wafi/releases/download/v0.1.0/wafi-darwin-amd64 -o wafi
+chmod +x wafi && sudo mv wafi /usr/local/bin/
 ```
 
-Until the tap is live, grab a binary from the
-[releases page](https://github.com/helmif/wafi/releases) and drop it on
-your `$PATH`. Prebuilt binaries ship for `linux/amd64`, `linux/arm64`,
-`darwin/amd64`, `darwin/arm64`, and `windows/amd64`.
+### Linux
+
+```bash
+# AMD64
+curl -L https://github.com/helmif/wafi/releases/download/v0.1.0/wafi-linux-amd64 -o wafi
+chmod +x wafi && sudo mv wafi /usr/local/bin/
+
+# ARM64
+curl -L https://github.com/helmif/wafi/releases/download/v0.1.0/wafi-linux-arm64 -o wafi
+chmod +x wafi && sudo mv wafi /usr/local/bin/
+```
+
+### Windows
+
+Download `wafi-windows-amd64.exe` from the [releases page](https://github.com/helmif/wafi/releases/latest).
+Rename to `wafi.exe`, add to PATH.
+
+### Verify
+
+```bash
+wafi version
+```
+
+---
 
 ## Quick start
 
 ```bash
 cd your-project
 wafi init
+# Hook registered in .claude/settings.json
+# That's it. Use Claude Code normally.
 ```
 
-`wafi init` registers a `PreToolUse` hook in `.claude/settings.json`. After
-that, keep using Claude Code normally — any supported command it runs is
-automatically prefixed with `wafi run`, the output is filtered, and your
-token count goes down.
+---
 
 ## Supported commands
 
-| Command            | Dropped                                              | Kept                                                            |
-| ------------------ | ---------------------------------------------------- | --------------------------------------------------------------- |
-| `git status`       | hint lines, blank separators, verbose section labels | branch, upstream, per-file M/A/D/R/C/U/? status                 |
-| `git diff`         | `index ` SHAs, `similarity index`, context lines     | `@@` hunks, `+`/`-` lines, file headers, mode/rename/binary     |
-| `git log`          | full hash, email, GPG sig, body, `--stat` file lines | `<hash7> <subject> (<author>, <reldate>)` per commit            |
-| `git push`         | `remote:` progress, object counting/compressing      | `To <remote>`, branch refs, errors/hints                        |
-| `git pull`         | `remote:` progress, `Unpacking objects` lines        | `From`, fast-forward stats, `CONFLICT`, merge headlines         |
-| `git branch`       | `HEAD ->` pointer, `remotes/` prefix                 | current branch `*` marker, `[remote]` prefix on remotes         |
-| `npm install`      | funding notice, audit/fund hints, blank lines        | install summary, vulnerability count, errors, deprecations      |
-| `pnpm install`     | `++++++` progress bars, dep tree lines               | `Packages: +N`, progress tail, warnings, `ERR_PNPM_*` errors    |
-| `yarn install`     | `[N/N]` step progress, `info ` lines, tree glyphs    | success, error, warning, `Done in Xs`                           |
-| `docker build`     | `=> [internal]` meta, transfer/export progress       | `=> [N/N]` step headers, `=> CACHED`, `=> ERROR`, image ID/tag  |
-| `go test`          | `--- PASS:` lines                                    | `--- FAIL:` + indented context, summary line, coverage %        |
-| `jest` / `vitest`  | ` PASS` / ` ✓ ` passing-file rows                    | failing-file rows, `●` / `❯` error blocks, summary block        |
-| `cargo test`       | `Compiling`/`Finished`/`Running`, `test ... ok`      | `test ... FAILED` rows, `failures:` block, `test result:` line  |
-| `ls -l`            | `total N`, `.`/`..`, perms, owner, group, timestamp  | names, human-readable sizes, `/` on dirs, symlink targets       |
-| `find`             | `Permission denied` / `Operation not permitted`      | matched paths, truncation summary, one-line denied count        |
-| `grep` / `rg`      | excess context lines beyond 2 before/after           | filename grouping, line numbers, matched text, binary notices   |
-| `diff`             | unchanged context beyond 3 consecutive lines         | `@@` hunks, `+`/`-`, file headers, `***` section markers        |
+| Tool | Commands | Dropped | Kept |
+|------|----------|---------|------|
+| 🔧 Git | status, diff, log, push, pull, branch | progress, verbose headers | branch info, change lines, summary |
+| 📦 Packages | npm/pnpm/yarn install | progress bars, tree output | summary, errors, warnings |
+| 🐳 Docker | build | layer transfers, `[internal]` metadata | step headers, errors, image ID |
+| 🧪 Tests | go test, jest, vitest, cargo test | passing test names | failures + full error context, summary |
+| 📁 Filesystem | ls, find, grep, diff | permissions, excess context | filenames, sizes, matches |
 
 Any command not in this table passes through unchanged.
 
-## Usage
+---
+
+## CLI reference
 
 ```bash
-wafi stats                # token savings summary (session + lifetime)
-wafi stats --json         # machine-readable
-wafi stash list           # recent stashed raw outputs from failed commands
-wafi stash show <id>      # full raw output for a failed filtered command
-wafi stash clean --yes    # delete stashed outputs older than 7 days
-wafi doctor               # check setup (binary in PATH, dirs writable, hook)
+wafi run <cmd> [args]     # execute + filter
+wafi stats                # token savings summary
+wafi stash list           # browse saved raw outputs
+wafi stash show <id>      # view full raw output
+wafi stash clean          # delete old stash files
+wafi doctor               # health check
+wafi init                 # register Claude Code hook
+wafi version              # version info
 ```
 
-When a filtered command *fails*, wafi writes the raw, unfiltered output to
-`~/.local/state/wafi/stash/` (or `$XDG_STATE_HOME/wafi/stash/`) and appends
-the path to stdout. The AI can always recover full detail if the compressed
-view dropped something relevant.
+---
 
-## How it works
+## wafi stats sample output
 
-- `wafi run <cmd>` executes `<cmd>` in a subprocess, captures stdout/stderr,
-  preserves the exit code and forwards signals (`SIGINT`, `SIGTERM`).
-- A registry of deterministic filters (regex/string ops) rewrites stdout.
-  No LLM, no network, no file I/O beyond the stash on failure.
-- A `PreToolUse` hook in `.claude/settings.json` transparently rewrites the
-  agent's `Bash` tool invocations — the agent doesn't know wafi is there.
+```
+$ wafi stats
+Lifetime
+  commands filtered:    47
+  commands passthrough: 3
+  tokens raw:           18,420
+  tokens filtered:      2,103
+  tokens saved:         16,317
+  repeat reads blocked: 8
+```
+
+---
 
 ## Zero-risk guarantee
 
-wafi is built on five non-negotiable principles:
+> **Unknown command?** Pass-through unchanged.
+> **Filter error?** Pass-through + log.
+> **Command fails?** Full output saved, path shown to AI.
+> **Exit code** always preserved.
+> **Errors & stack traces** never filtered.
 
-1. **Unknown command = pass-through.** Output is unchanged.
-2. **Filter failure or panic returns the raw output.** A bug in wafi never
-   fails the user's command.
-3. **Filters are deterministic.** Regex and string operations only — no
-   LLM, no network, no disk I/O during filtering.
-4. **Error messages and stack traces are preserved verbatim.** Only
-   ceremony (progress bars, hint lines, blank separators) is dropped.
-5. **Exit codes are propagated exactly.** `wafi run foo` exits with the
-   same code `foo` would have.
+---
 
-When a filter must choose between *fewer tokens* and *safer*, it chooses
-safer. When in doubt, the filter returns input unchanged.
+## How it works
+
+1. `wafi init` registers a Claude Code hook in `.claude/settings.json`
+2. Hook rewrites `git status` → `wafi run git status` transparently
+3. wafi executes the command, captures output, applies filter
+4. Compressed output reaches Claude Code instead of raw noise
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
-MIT
+MIT © Helmi Fauzi
