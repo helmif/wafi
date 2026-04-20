@@ -1,0 +1,12 @@
+ WARN  deprecated uuid@3.4.0: Please upgrade to version 7 or higher.
+Packages: +123
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 456, reused 333, downloaded 123, added 123, done
+
+dependencies:
++ express 4.18.2
++ lodash 4.17.21
+
+devDependencies:
++ jest 29.7.0
++ typescript 5.3.2

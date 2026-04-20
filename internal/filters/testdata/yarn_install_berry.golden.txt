@@ -1,0 +1,3 @@
+➤ YN0013: │ lodash@npm:4.17.21 can't be found in the cache and will be fetched from the remote registry
+➤ YN0002: │ express@npm:4.18.2 doesn't provide peer dependency: peer-dep@^1.0.0
+➤ YN0000: · Done in 1s 678ms
