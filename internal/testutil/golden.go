@@ -28,6 +28,7 @@ func CheckGolden(t *testing.T, name string, got []byte) {
 		}
 		return
 	}
+	// #nosec G304 -- test helper; `path` is always testdata/<caller-controlled>.
 	want, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read golden %s (run with -update to create): %v", path, err)

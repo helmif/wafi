@@ -43,6 +43,9 @@ type Result struct {
 // naturally. The returned Result always has a valid ExitCode even on error,
 // so callers can `os.Exit(result.ExitCode)` safely.
 func Run(ctx context.Context, name string, args []string) (*Result, error) {
+	// #nosec G204 -- wafi is a shell-command proxy; running user-supplied
+	// command/args is its entire purpose. No `sh -c` shell interpretation
+	// is used; args are passed directly to exec.Command.
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Env = os.Environ() // inherit full env; we don't leak or filter

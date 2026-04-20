@@ -118,6 +118,8 @@ func Load(sessionID string) (*Ledger, error) {
 }
 
 func readDisk(path string) (diskLedger, error) {
+	// #nosec G304 -- path is always the ledger file under the fixed XDG state
+	// dir; never user-supplied.
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return diskLedger{Version: version}, nil
