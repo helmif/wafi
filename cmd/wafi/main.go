@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,6 +48,10 @@ func main() {
 		os.Exit(cmdDoctor(os.Args[2:]))
 	case "version", "--version", "-v":
 		fmt.Println(version)
+	case "init":
+		os.Exit(cmdInit(os.Args[2:]))
+	case "hook":
+		os.Exit(cmdHook(os.Args[2:]))
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -66,6 +71,8 @@ Usage:
   wafi stash show <id>                  Print full stashed content
   wafi stash clean [--older-than DUR] [--yes]
                                         Delete old stash files (default 7d)
+  wafi init                             Register PreToolUse hook in .claude/settings.json
+  wafi hook rewrite                     Rewrite Bash tool commands (hook stdin→stdout)
   wafi doctor                           Check setup health
   wafi version                          Print the wafi version
 `)
@@ -391,6 +398,195 @@ func humanSize(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f%cB", float64(b)/float64(div), "KMGT"[exp])
+}
+
+// ---- init ----------------------------------------------------------------
+
+const (
+	claudeDir      = ".claude"
+	settingsFile   = ".claude/settings.json"
+	hookCmd        = "wafi hook rewrite"
+	hookMatcher    = "Bash"
+)
+
+func cmdInit(_ []string) int {
+	if err := os.MkdirAll(claudeDir, 0o700); err != nil {
+		fmt.Fprintf(os.Stderr, "wafi: %v\n", err)
+		return 1
+	}
+
+	var root map[string]any
+	data, err := os.ReadFile(settingsFile)
+	if err != nil && !os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "wafi: %v\n", err)
+		return 1
+	}
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &root); err != nil {
+			fmt.Fprintf(os.Stderr, "wafi: cannot parse %s: %v\n", settingsFile, err)
+			return 1
+		}
+	}
+	if root == nil {
+		root = map[string]any{}
+	}
+
+	if hookAlreadyRegistered(root) {
+		fmt.Println("Already registered")
+		return 0
+	}
+
+	registerHook(root)
+
+	out, err := json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "wafi: %v\n", err)
+		return 1
+	}
+	out = append(out, '\n')
+	if err := os.WriteFile(settingsFile, out, 0o600); err != nil {
+		fmt.Fprintf(os.Stderr, "wafi: %v\n", err)
+		return 1
+	}
+	fmt.Println("Hook registered in .claude/settings.json")
+	return 0
+}
+
+// hookAlreadyRegistered reports whether a "wafi hook rewrite" entry already
+// exists anywhere in the PreToolUse hook list.
+func hookAlreadyRegistered(root map[string]any) bool {
+	hooks, ok := root["hooks"].(map[string]any)
+	if !ok {
+		return false
+	}
+	preList, ok := hooks["PreToolUse"].([]any)
+	if !ok {
+		return false
+	}
+	for _, item := range preList {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		innerList, ok := m["hooks"].([]any)
+		if !ok {
+			continue
+		}
+		for _, h := range innerList {
+			hm, ok := h.(map[string]any)
+			if !ok {
+				continue
+			}
+			if hm["command"] == hookCmd {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// registerHook adds the PreToolUse entry to root, merging with any existing hooks.
+func registerHook(root map[string]any) {
+	hooks, ok := root["hooks"].(map[string]any)
+	if !ok {
+		hooks = map[string]any{}
+		root["hooks"] = hooks
+	}
+
+	entry := map[string]any{
+		"matcher": hookMatcher,
+		"hooks": []any{
+			map[string]any{
+				"type":    "command",
+				"command": hookCmd,
+			},
+		},
+	}
+
+	preList, _ := hooks["PreToolUse"].([]any)
+	hooks["PreToolUse"] = append(preList, entry)
+}
+
+// ---- hook ----------------------------------------------------------------
+
+// knownFilteredCmds is the set of binaries whose output wafi can filter.
+var knownFilteredCmds = map[string]bool{
+	"git":    true,
+	"npm":    true,
+	"pnpm":   true,
+	"yarn":   true,
+	"docker": true,
+	"go":     true,
+	"jest":   true,
+	"vitest": true,
+	"cargo":  true,
+	"ls":     true,
+	"find":   true,
+	"grep":   true,
+	"diff":   true,
+}
+
+func cmdHook(args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: wafi hook rewrite")
+		return 2
+	}
+	switch args[0] {
+	case "rewrite":
+		return cmdHookRewrite()
+	default:
+		fmt.Fprintf(os.Stderr, "wafi: unknown hook subcommand %q\n", args[0])
+		return 2
+	}
+}
+
+func cmdHookRewrite() int {
+	raw, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		// Can't even read — pass nothing through; exit 0 so hook doesn't block.
+		return 0
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		// Malformed input — forward as-is.
+		_, _ = os.Stdout.Write(raw)
+		return 0
+	}
+
+	toolInput, _ := payload["tool_input"].(map[string]any)
+	if toolInput != nil {
+		if cmd, ok := toolInput["command"].(string); ok {
+			if rewritten, changed := rewriteCommand(cmd); changed {
+				toolInput["command"] = rewritten
+				payload["tool_input"] = toolInput
+			}
+		}
+	}
+
+	out, err := json.Marshal(payload)
+	if err != nil {
+		_, _ = os.Stdout.Write(raw)
+		return 0
+	}
+	_, _ = os.Stdout.Write(out)
+	return 0
+}
+
+// rewriteCommand prepends "wafi run" if the first word of cmd is a known
+// filtered binary. Returns (new command, changed).
+func rewriteCommand(cmd string) (string, bool) {
+	trimmed := strings.TrimSpace(cmd)
+	if trimmed == "" {
+		return cmd, false
+	}
+	binary := strings.Fields(trimmed)[0]
+	// Strip any path prefix so "/usr/bin/git" → "git".
+	binary = filepath.Base(binary)
+	if !knownFilteredCmds[binary] {
+		return cmd, false
+	}
+	return "wafi run " + trimmed, true
 }
 
 // ---- doctor --------------------------------------------------------------
