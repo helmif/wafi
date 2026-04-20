@@ -1,0 +1,7 @@
+--- FAIL: TestSub (0.00s)
+    math_test.go:18: got -1, want 1
+--- FAIL: TestDiv (0.01s)
+    math_test.go:34: division by zero not handled
+    math_test.go:35: expected error, got nil
+FAIL
+FAIL	example/math	0.018s

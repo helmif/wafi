@@ -1,0 +1,1 @@
+ok  	example/math	0.015s	coverage: 87.5% of statements

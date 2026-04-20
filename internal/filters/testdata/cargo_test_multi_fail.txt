@@ -1,0 +1,28 @@
+   Compiling mylib v0.1.0 (/home/user/mylib)
+    Finished test [unoptimized + debuginfo] target(s) in 1.67s
+     Running unittests src/lib.rs (target/debug/deps/mylib-a1b2c3)
+
+running 4 tests
+test add ... ok
+test div ... FAILED
+test mul ... ok
+test sub ... FAILED
+
+failures:
+
+---- div stdout ----
+thread 'div' panicked at 'attempt to divide by zero', src/lib.rs:34:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sub stdout ----
+thread 'sub' panicked at 'assertion `left == right` failed
+  left: -1
+ right: 1', src/lib.rs:18:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    div
+    sub
+
+test result: FAILED. 2 failed; 2 passed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

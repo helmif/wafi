@@ -1,0 +1,1 @@
+ok  	example/math	0.012s

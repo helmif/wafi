@@ -1,0 +1,22 @@
+   Compiling mylib v0.1.0 (/home/user/mylib)
+    Finished test [unoptimized + debuginfo] target(s) in 1.45s
+     Running unittests src/lib.rs (target/debug/deps/mylib-a1b2c3)
+
+running 3 tests
+test add ... ok
+test mul ... ok
+test sub ... FAILED
+
+failures:
+
+---- sub stdout ----
+thread 'sub' panicked at 'assertion `left == right` failed
+  left: -1
+ right: 1', src/lib.rs:18:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    sub
+
+test result: FAILED. 1 failed; 2 passed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
