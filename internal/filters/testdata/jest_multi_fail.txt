@@ -1,0 +1,25 @@
+ PASS  src/utils/math.test.ts
+ FAIL  src/components/Button.test.tsx
+ FAIL  src/api/fetch.test.ts
+ PASS  src/utils/string.test.ts
+
+  ● Button › renders with correct class
+
+    expect(received).toBe(expected)
+
+    Expected: "btn-primary"
+    Received: "btn-secondary"
+
+      at Object.<anonymous> (src/components/Button.test.tsx:15:24)
+
+  ● fetch › returns user data
+
+    TypeError: Cannot read properties of undefined (reading 'data')
+
+      at Object.<anonymous> (src/api/fetch.test.ts:28:18)
+
+Test Suites: 2 failed, 2 passed, 4 total
+Tests:       2 failed, 7 passed, 9 total
+Snapshots:   0 total
+Time:        2.341 s
+Ran all test suites.

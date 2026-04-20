@@ -46,5 +46,9 @@ func Default() *Registry {
 	r.Register(PnpmInstall{})
 	r.Register(YarnInstall{})
 	r.Register(DockerBuild{})
+	r.Register(GoTest{})
+	r.Register(Jest{})
+	r.Register(Vitest{})
+	r.Register(CargoTest{})
 	return r
 }

@@ -1,0 +1,7 @@
+error[E0432]: unresolved import `foo`
+ --> src/lib.rs:1:5
+  |
+1 | use foo;
+  | ^^^
+
+error: could not compile `mylib` (lib) due to 1 previous error

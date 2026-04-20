@@ -1,0 +1,5 @@
+--- PASS: TestAdd (0.00s)
+--- PASS: TestSub (0.00s)
+--- PASS: TestMul (0.00s)
+--- PASS: TestDiv (0.00s)
+ok  	example/math	0.015s	coverage: 87.5% of statements

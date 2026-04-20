@@ -4,6 +4,36 @@ All notable changes to wafi are documented here.
 
 ## [Unreleased] — v0.1.0
 
+### Phase 6 — test runner filters (2026-04-20)
+
+Added four filters for test runners.
+
+**go_test** (`internal/filters/go_test_filter.go`)
+- Keeps: `--- FAIL:` lines and their full indented error context, final summary (`ok`/`FAIL`/`?`), coverage %
+- Drops: `--- PASS:` lines (summary already covers pass count)
+- Passthrough: `-v` flag (already compact), pure panic output (no PASS lines), no-test-files output
+- 6 fixtures (4 golden, 2 passthrough)
+
+**jest** (`internal/filters/jest_filter.go`)
+- Keeps: ` FAIL  file.test.ts` lines, full `●` error blocks, summary (Test Suites / Tests / Time)
+- Drops: ` PASS  file.test.ts` lines
+- Passthrough: all-fail output (no PASS lines to drop); supports `jest` and `npx jest`
+- 4 fixtures (3 golden, 1 passthrough)
+
+**vitest** (`internal/filters/vitest_filter.go`)
+- Keeps: ` ✗ ` failing-file lines, `❯` error blocks, summary (Test Files / Tests / Duration)
+- Drops: ` ✓ ` passing-file lines
+- Passthrough: all-fail output; supports `vitest` and `npx vitest`
+- 3 fixtures (2 golden, 1 passthrough)
+
+**cargo_test** (`internal/filters/cargo_test_filter.go`)
+- Keeps: `test X ... FAILED` lines, full `failures:` block, `test result:` summary
+- Drops: `Compiling`/`Finished`/`Running` build preamble, `running N tests` header, `test X ... ok` passing lines
+- Passthrough: build errors with no test output
+- 5 fixtures (4 golden, 1 passthrough)
+
+---
+
 ### Phase 5 — package manager & docker filters (2026-04-20)
 
 Added four filters for package managers and container builds.

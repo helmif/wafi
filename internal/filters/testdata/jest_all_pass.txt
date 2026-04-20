@@ -1,0 +1,9 @@
+ PASS  src/utils/math.test.ts
+ PASS  src/utils/string.test.ts
+ PASS  src/api/fetch.test.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        1.234 s
+Ran all test suites.

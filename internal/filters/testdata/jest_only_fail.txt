@@ -1,0 +1,16 @@
+ FAIL  src/components/Button.test.tsx
+
+  ● Button › renders with correct class
+
+    expect(received).toBe(expected)
+
+    Expected: "btn-primary"
+    Received: "btn-secondary"
+
+      at Object.<anonymous> (src/components/Button.test.tsx:15:24)
+
+Test Suites: 1 failed, 0 passed, 1 total
+Tests:       1 failed, 0 passed, 1 total
+Snapshots:   0 total
+Time:        0.923 s
+Ran all test suites.
