@@ -6,7 +6,7 @@ All notable changes to wafi are documented here.
 
 ### Phase 7 — filesystem filters (2026-04-20)
 
-Added three filesystem filters.
+Added four filesystem filters — completes Phase 7.
 
 **ls** (`internal/filters/ls_filter.go`)
 - Matches: any `ls` invocation with a short `-l` flag (`-l`, `-la`, `-lh`, `-lR`, `-al`, etc.)
@@ -31,7 +31,16 @@ Added three filesystem filters.
 - Passthrough: unknown format (no filename/line-number prefix, no binary), empty output, single-file with ≤2 context already
 - 10 test cases (match, multi-file, context limiting, binary-only, binary mixed, no matches, single-file passthrough, single-file excess context, unknown format, `--` separator)
 
-All three filters registered in `Default()`.
+**diff** (`internal/filters/diff_filter.go`)
+- Matches: standalone `diff` command only (`cmd=="diff"`); `git diff` (`cmd=="git"`) is handled by `GitDiff` and can never match here
+- Detects format from first structural line: `@@ ` → unified, `***************` → context, neither → normal format
+- Unified (`-u`): keeps `--- /+++` file headers, `@@ ` hunk headers, all `+`/`-` change lines, max 3 consecutive context lines per run; `\ No newline` annotations always kept
+- Context (`-c`): keeps `*** /---` headers, `***************` separators, all `! `/ `+ `/`- ` change lines, max 3 consecutive `  ` context lines per run; resets count at each section header
+- Passthrough: binary (`Binary files X and Y differ`), no differences (empty output), normal format (already compact, no context lines), diffs with ≤3 consecutive context lines (nothing to trim)
+- Handles: multi-file recursive diffs (`diff -r`), `diff ` sub-headers preserved
+- 10 test cases (match, unified passthrough, unified excess, multi-hunk, context format, normal passthrough, no differences, binary, no-newline annotation, multi-file)
+
+All four filters registered in `Default()`. Phase 7 complete — 180 total tests passing.
 
 ---
 
