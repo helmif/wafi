@@ -1,0 +1,64 @@
+// Package filters defines per-command output compressors and a registry that
+// routes a (command, args) invocation to the right one.
+//
+// Zero-risk contract for every Filter:
+//   - Match must be cheap and side-effect free.
+//   - Apply must be deterministic (regex/string ops, no I/O, no LLM).
+//   - If Apply encounters anything it does not fully understand, it MUST
+//     return the input unchanged. "When in doubt, pass-through."
+//   - Error messages and stack traces inside the output must survive
+//     verbatim. Filters compress ceremony (progress, hints, blank lines),
+//     never signal.
+//   - A panic inside Apply is treated as filter failure by SafeApply and
+//     degrades to pass-through. Filters should still avoid panics — this
+//     is a safety net, not a license.
+package filters
+
+import "fmt"
+
+// ApplyContext carries read-only context that a filter may consult when
+// deciding how (or whether) to transform stdout. Fields must not be
+// mutated by the filter.
+type ApplyContext struct {
+	// Cmd is the executable name, e.g. "git".
+	Cmd string
+	// Args are the arguments passed to Cmd, e.g. ["status"]. Filters must
+	// not mutate this slice.
+	Args []string
+	// ExitCode is the exit status of the subprocess. A non-zero exit may
+	// change how a filter behaves (e.g. prefer pass-through on failure).
+	ExitCode int
+	// Stderr is provided for context only. Filters must NOT modify or
+	// consume stderr — it is the user's direct signal path and flows
+	// through verbatim at the runner layer.
+	Stderr []byte
+}
+
+// Filter compresses the raw stdout of a specific command form.
+type Filter interface {
+	// Name is a short identifier, used in logs and stash filenames.
+	Name() string
+
+	// Match reports whether this filter handles the given invocation.
+	// It must not mutate args.
+	Match(cmd string, args []string) bool
+
+	// Apply returns a compressed version of stdout. It must return the
+	// original bytes unchanged if the input does not match the shape the
+	// filter was written for. ctx is read-only.
+	Apply(stdout []byte, ctx ApplyContext) []byte
+}
+
+// SafeApply invokes f.Apply with panic recovery. On panic it returns the
+// original stdout unchanged and a non-nil error that identifies the filter.
+// Callers should dispatch filters exclusively through SafeApply so that a
+// panicking filter can never fail the user's command.
+func SafeApply(f Filter, stdout []byte, ctx ApplyContext) (out []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			out = stdout
+			err = fmt.Errorf("filter %s panicked: %v", f.Name(), r)
+		}
+	}()
+	return f.Apply(stdout, ctx), nil
+}
