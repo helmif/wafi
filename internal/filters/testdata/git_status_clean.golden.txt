@@ -1,0 +1,3 @@
+branch: main
+upstream: origin/main (clean)
+nothing to commit, working tree clean

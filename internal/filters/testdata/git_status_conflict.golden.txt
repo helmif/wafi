@@ -1,0 +1,10 @@
+branch: main
+upstream: origin/main (clean)
+unmerged:
+  UU src/config.go
+  AA src/utils.go
+  AU src/extra.go
+  DU src/removed.go
+  UA src/theirs.go
+  UD src/theirold.go
+  DD src/gone.go

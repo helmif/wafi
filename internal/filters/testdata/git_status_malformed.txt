@@ -1,0 +1,2 @@
+this is not git status output
+some random garbage text

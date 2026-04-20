@@ -1,0 +1,7 @@
+branch: feature/auth
+upstream: origin/feature/auth (clean)
+unstaged:
+  M src/auth.go
+  M src/user.go
+untracked:
+  src/new.go

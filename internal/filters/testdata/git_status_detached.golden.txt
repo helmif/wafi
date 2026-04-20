@@ -1,0 +1,2 @@
+branch: HEAD detached at v1.2.3
+nothing to commit, working tree clean

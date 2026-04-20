@@ -1,0 +1,6 @@
+On branch feature/x
+Your branch and 'origin/feature/x' have diverged,
+and have 3 and 5 different commits each, respectively.
+  (use "git pull" to merge the remote branch into yours)
+
+nothing to commit, working tree clean

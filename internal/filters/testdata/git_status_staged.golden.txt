@@ -1,0 +1,9 @@
+branch: main
+upstream: origin/main (clean)
+staged:
+  A src/feature.go
+  M src/main.go
+  D src/old.go
+  R src/old_name.go -> src/new_name.go
+unstaged:
+  M src/config.go

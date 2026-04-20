@@ -1,0 +1,3 @@
+branch: feature/x
+upstream: origin/feature/x (ahead 3, behind 5)
+nothing to commit, working tree clean
