@@ -53,5 +53,6 @@ func Default() *Registry {
 	r.Register(Ls{})
 	r.Register(Find{})
 	r.Register(Grep{})
+	r.Register(Diff{})
 	return r
 }
