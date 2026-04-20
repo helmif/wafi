@@ -1,0 +1,4 @@
+diff --git a/internal/filters/testdata/test.bin b/internal/filters/testdata/test.bin
+new file mode 100644
+index 0000000..64c3c71
+Binary files /dev/null and b/internal/filters/testdata/test.bin differ

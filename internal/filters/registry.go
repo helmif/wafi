@@ -37,5 +37,6 @@ func (r *Registry) Lookup(cmd string, args []string) Filter {
 func Default() *Registry {
 	r := New()
 	r.Register(GitStatus{})
+	r.Register(GitDiff{})
 	return r
 }

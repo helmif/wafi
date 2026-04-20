@@ -1,0 +1,10 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -89,9 +89,3 @@ GOOS=linux  GOARCH=amd64 go build -o wafi-linux-amd64  ./cmd/wafi
+-
+-## Deeper context
+-
+-`HANDOFF.md` — planning notes from the initial session: decision log,
+-next phases (CLI entry, hook generator, testing, cross-compile), and
+-security checklist.

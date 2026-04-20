@@ -1,0 +1,9 @@
+diff --git a/internal/runner/runner.go b/internal/runner/runner.go
+index 70161ae..9534619 100644
+--- a/internal/runner/runner.go
++++ b/internal/runner/runner.go
+@@ -136,3 +136,4 @@ func (c *capWriter) Write(p []byte) (int, error) {
+ 	c.buf.Reset()
+ 	return c.passthrough.Write(p)
+ }
++// wafi

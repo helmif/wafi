@@ -1,0 +1,4 @@
+diff --git a/internal/testutil/golden.go b/internal/testutil/goldenfile.go
+similarity index 100%
+rename from internal/testutil/golden.go
+rename to internal/testutil/goldenfile.go

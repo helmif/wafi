@@ -1,0 +1,3 @@
+diff --git a/internal/testutil/golden.go b/internal/testutil/goldenfile.go
+rename from internal/testutil/golden.go
+rename to internal/testutil/goldenfile.go

@@ -1,0 +1,14 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 2c00be5..b8c64ce 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -89,9 +89,3 @@ GOOS=linux  GOARCH=amd64 go build -o wafi-linux-amd64  ./cmd/wafi
+ - No `sh -c`; use `exec.Command` directly.
+ - Env variables are never logged or stashed (may contain secrets).
+ - User-influenced paths always sanitized (see `safeName` in stash.go).
+-
+-## Deeper context
+-
+-`HANDOFF.md` — planning notes from the initial session: decision log,
+-next phases (CLI entry, hook generator, testing, cross-compile), and
+-security checklist.

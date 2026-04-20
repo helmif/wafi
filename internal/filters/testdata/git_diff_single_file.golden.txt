@@ -1,0 +1,5 @@
+diff --git a/internal/runner/runner.go b/internal/runner/runner.go
+--- a/internal/runner/runner.go
++++ b/internal/runner/runner.go
+@@ -136,3 +136,4 @@ func (c *capWriter) Write(p []byte) (int, error) {
++// wafi

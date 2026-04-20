@@ -1,0 +1,429 @@
+diff --git a/internal/filters/filter.go b/internal/filters/filter.go
+new file mode 100644
+index 0000000..c3bc005
+--- /dev/null
++++ b/internal/filters/filter.go
+@@ -0,0 +1,64 @@
++// Package filters defines per-command output compressors and a registry that
++// routes a (command, args) invocation to the right one.
++//
++// Zero-risk contract for every Filter:
++//   - Match must be cheap and side-effect free.
++//   - Apply must be deterministic (regex/string ops, no I/O, no LLM).
++//   - If Apply encounters anything it does not fully understand, it MUST
++//     return the input unchanged. "When in doubt, pass-through."
++//   - Error messages and stack traces inside the output must survive
++//     verbatim. Filters compress ceremony (progress, hints, blank lines),
++//     never signal.
++//   - A panic inside Apply is treated as filter failure by SafeApply and
++//     degrades to pass-through. Filters should still avoid panics — this
++//     is a safety net, not a license.
++package filters
++
++import "fmt"
++
++// ApplyContext carries read-only context that a filter may consult when
++// deciding how (or whether) to transform stdout. Fields must not be
++// mutated by the filter.
++type ApplyContext struct {
++	// Cmd is the executable name, e.g. "git".
++	Cmd string
++	// Args are the arguments passed to Cmd, e.g. ["status"]. Filters must
++	// not mutate this slice.
++	Args []string
++	// ExitCode is the exit status of the subprocess. A non-zero exit may
++	// change how a filter behaves (e.g. prefer pass-through on failure).
++	ExitCode int
++	// Stderr is provided for context only. Filters must NOT modify or
++	// consume stderr — it is the user's direct signal path and flows
++	// through verbatim at the runner layer.
++	Stderr []byte
++}
++
++// Filter compresses the raw stdout of a specific command form.
++type Filter interface {
++	// Name is a short identifier, used in logs and stash filenames.
++	Name() string
++
++	// Match reports whether this filter handles the given invocation.
++	// It must not mutate args.
++	Match(cmd string, args []string) bool
++
++	// Apply returns a compressed version of stdout. It must return the
++	// original bytes unchanged if the input does not match the shape the
++	// filter was written for. ctx is read-only.
++	Apply(stdout []byte, ctx ApplyContext) []byte
++}
++
++// SafeApply invokes f.Apply with panic recovery. On panic it returns the
++// original stdout unchanged and a non-nil error that identifies the filter.
++// Callers should dispatch filters exclusively through SafeApply so that a
++// panicking filter can never fail the user's command.
++func SafeApply(f Filter, stdout []byte, ctx ApplyContext) (out []byte, err error) {
++	defer func() {
++		if r := recover(); r != nil {
++			out = stdout
++			err = fmt.Errorf("filter %s panicked: %v", f.Name(), r)
++		}
++	}()
++	return f.Apply(stdout, ctx), nil
++}
+diff --git a/internal/filters/git_status.go b/internal/filters/git_status.go
+new file mode 100644
+index 0000000..4fa449a
+--- /dev/null
++++ b/internal/filters/git_status.go
+@@ -0,0 +1,306 @@
++package filters
++
++import (
++	"regexp"
++	"strings"
++)
++
++// GitStatus compresses the default (long) form of `git status`.
++//
++// Matching is intentionally narrow: only a bare `git status` with no flags.
++// Any flag could change the output shape (`--porcelain`, `-s`, `--branch`,
++// `--column`, `-z`, ...) and we do not want to risk misparsing.
++//
++// Compression is best-effort and strictly reversible in spirit: if any line
++// falls outside the small grammar below, Apply returns the input unchanged.
++type GitStatus struct{}
++
++func (GitStatus) Name() string { return "git-status" }
++
++func (GitStatus) Match(cmd string, args []string) bool {
++	if cmd != "git" {
++		return false
++	}
++	if len(args) != 1 {
++		return false
++	}
++	return args[0] == "status"
++}
++
++func (GitStatus) Apply(out []byte, _ ApplyContext) []byte {
++	compact, ok := compressGitStatus(out)
++	if !ok {
++		return out
++	}
++	return compact
++}
++
++// section tracks which block of `git status` we are currently reading entries
++// for. The empty string means we are between sections (header area).
++type section string
++
++const (
++	secNone      section = ""
++	secStaged    section = "staged"
++	secUnstaged  section = "unstaged"
++	secUntracked section = "untracked"
++	secUnmerged  section = "unmerged"
++)
++
++// upstreamUpToDate matches "Your branch is up to date with 'origin/main'."
++var upstreamUpToDate = regexp.MustCompile(`^Your branch is up to date with '([^']+)'\.$`)
++
++// upstreamAhead matches "Your branch is ahead of 'origin/main' by 3 commits."
++var upstreamAhead = regexp.MustCompile(`^Your branch is ahead of '([^']+)' by (\d+) commits?\.$`)
++
++// upstreamBehind matches "Your branch is behind 'origin/main' by 3 commits, and can be fast-forwarded."
++var upstreamBehind = regexp.MustCompile(`^Your branch is behind '([^']+)' by (\d+) commits?,`)
++
++// upstreamDivergedHead matches the first line of the "diverged" message.
++var upstreamDivergedHead = regexp.MustCompile(`^Your branch and '([^']+)' have diverged,$`)
++
++// upstreamDivergedTail matches "and have 3 and 5 different commits each, respectively."
++var upstreamDivergedTail = regexp.MustCompile(`^and have (\d+) and (\d+) different commits each, respectively\.$`)
++
++func compressGitStatus(out []byte) ([]byte, bool) {
++	text := string(out)
++	lines := strings.Split(text, "\n")
++
++	// Drop a single trailing empty line produced by the terminating newline,
++	// so we can treat every remaining empty string as a "blank line" mid-output.
++	if n := len(lines); n > 0 && lines[n-1] == "" {
++		lines = lines[:n-1]
++	}
++
++	var (
++		branch    string
++		upstream  string
++		staged    []string
++		unstaged  []string
++		untracked []string
++		unmerged  []string
++		finalMsg  string
++		sec       = secNone
++	)
++
++	for i := 0; i < len(lines); i++ {
++		line := lines[i]
++
++		// Blank lines separate sections; never carry information.
++		if line == "" {
++			sec = secNone
++			continue
++		}
++
++		// Branch / HEAD state.
++		if strings.HasPrefix(line, "On branch ") {
++			if branch != "" {
++				return nil, false // duplicate header → unfamiliar shape
++			}
++			branch = strings.TrimPrefix(line, "On branch ")
++			continue
++		}
++		if strings.HasPrefix(line, "HEAD detached ") {
++			if branch != "" {
++				return nil, false
++			}
++			branch = line // preserve verbatim; rarer, keep full info
++			continue
++		}
++
++		// Upstream status. Handle the two-line "diverged" form by peeking ahead.
++		if m := upstreamUpToDate.FindStringSubmatch(line); m != nil {
++			upstream = "upstream: " + m[1] + " (clean)"
++			continue
++		}
++		if m := upstreamAhead.FindStringSubmatch(line); m != nil {
++			upstream = "upstream: " + m[1] + " (ahead " + m[2] + ")"
++			continue
++		}
++		if m := upstreamBehind.FindStringSubmatch(line); m != nil {
++			upstream = "upstream: " + m[1] + " (behind " + m[2] + ")"
++			continue
++		}
++		if m := upstreamDivergedHead.FindStringSubmatch(line); m != nil {
++			if i+1 >= len(lines) {
++				return nil, false
++			}
++			t := upstreamDivergedTail.FindStringSubmatch(lines[i+1])
++			if t == nil {
++				return nil, false
++			}
++			upstream = "upstream: " + m[1] + " (ahead " + t[1] + ", behind " + t[2] + ")"
++			i++
++			continue
++		}
++		if strings.HasPrefix(line, "Your branch ") {
++			// Recognized prefix but not a known shape. Bail out rather than
++			// risk dropping something the user relies on.
++			return nil, false
++		}
++
++		// Section headers.
++		switch line {
++		case "Changes to be committed:":
++			sec = secStaged
++			continue
++		case "Changes not staged for commit:":
++			sec = secUnstaged
++			continue
++		case "Untracked files:":
++			sec = secUntracked
++			continue
++		case "Unmerged paths:":
++			sec = secUnmerged
++			continue
++		}
++
++		// Hint lines inside a section: "  (use \"git ...\")".
++		if strings.HasPrefix(line, "  (") && strings.HasSuffix(line, ")") {
++			continue
++		}
++
++		// Entry lines inside a section are tab-indented.
++		if strings.HasPrefix(line, "\t") {
++			entry := strings.TrimPrefix(line, "\t")
++			switch sec {
++			case secStaged:
++				e, ok := parseChangeEntry(entry)
++				if !ok {
++					return nil, false
++				}
++				staged = append(staged, e)
++			case secUnstaged:
++				e, ok := parseChangeEntry(entry)
++				if !ok {
++					return nil, false
++				}
++				unstaged = append(unstaged, e)
++			case secUntracked:
++				untracked = append(untracked, entry)
++			case secUnmerged:
++				e, ok := parseUnmergedEntry(entry)
++				if !ok {
++					return nil, false
++				}
++				unmerged = append(unmerged, e)
++			default:
++				return nil, false
++			}
++			continue
++		}
++
++		// Terminal summary lines.
++		if strings.HasPrefix(line, "nothing to commit") ||
++			strings.HasPrefix(line, "no changes added to commit") ||
++			strings.HasPrefix(line, "nothing added to commit but untracked") {
++			finalMsg = line
++			continue
++		}
++
++		// Anything else is outside the grammar we trust.
++		return nil, false
++	}
++
++	return renderGitStatus(branch, upstream, staged, unstaged, unmerged, untracked, finalMsg), true
++}
++
++// parseChangeEntry reads a staged/unstaged entry like "modified:   foo.go"
++// and returns a single compact token: "M foo.go". Returns false for any
++// unrecognized label.
++func parseChangeEntry(entry string) (string, bool) {
++	idx := strings.Index(entry, ":")
++	if idx <= 0 {
++		return "", false
++	}
++	label := entry[:idx]
++	path := strings.TrimLeft(entry[idx+1:], " \t")
++	if path == "" {
++		return "", false
++	}
++	var code string
++	switch label {
++	case "new file":
++		code = "A"
++	case "modified":
++		code = "M"
++	case "deleted":
++		code = "D"
++	case "renamed":
++		code = "R"
++	case "copied":
++		code = "C"
++	case "typechange":
++		code = "T"
++	default:
++		return "", false
++	}
++	return code + " " + path, true
++}
++
++func parseUnmergedEntry(entry string) (string, bool) {
++	idx := strings.Index(entry, ":")
++	if idx <= 0 {
++		return "", false
++	}
++	label := entry[:idx]
++	path := strings.TrimLeft(entry[idx+1:], " \t")
++	if path == "" {
++		return "", false
++	}
++	var code string
++	switch label {
++	case "both modified":
++		code = "UU"
++	case "both added":
++		code = "AA"
++	case "both deleted":
++		code = "DD"
++	case "added by us":
++		code = "AU"
++	case "deleted by us":
++		code = "DU"
++	case "added by them":
++		code = "UA"
++	case "deleted by them":
++		code = "UD"
++	default:
++		return "", false
++	}
++	return code + " " + path, true
++}
++
++func renderGitStatus(branch, upstream string, staged, unstaged, unmerged, untracked []string, finalMsg string) []byte {
++	var b strings.Builder
++	if branch != "" {
++		b.WriteString("branch: ")
++		b.WriteString(branch)
++		b.WriteByte('\n')
++	}
++	if upstream != "" {
++		b.WriteString(upstream)
++		b.WriteByte('\n')
++	}
++	writeSection(&b, "staged", staged)
++	writeSection(&b, "unstaged", unstaged)
++	writeSection(&b, "unmerged", unmerged)
++	writeSection(&b, "untracked", untracked)
++	if len(staged)+len(unstaged)+len(unmerged)+len(untracked) == 0 && finalMsg != "" {
++		b.WriteString(finalMsg)
++		b.WriteByte('\n')
++	}
++	return []byte(b.String())
++}
++
++func writeSection(b *strings.Builder, name string, entries []string) {
++	if len(entries) == 0 {
++		return
++	}
++	b.WriteString(name)
++	b.WriteString(":\n")
++	for _, e := range entries {
++		b.WriteString("  ")
++		b.WriteString(e)
++		b.WriteByte('\n')
++	}
++}
+diff --git a/internal/filters/registry.go b/internal/filters/registry.go
+new file mode 100644
+index 0000000..8d42aeb
+--- /dev/null
++++ b/internal/filters/registry.go
+@@ -0,0 +1,41 @@
++package filters
++
++// Registry holds an ordered list of filters. Order matters: the first
++// filter whose Match returns true wins. Register more specific filters
++// before more general ones.
++type Registry struct {
++	filters []Filter
++}
++
++// New returns an empty registry. Callers wire up concrete filters via
++// Register.
++func New() *Registry {
++	return &Registry{}
++}
++
++// Register appends f to the registry. Not safe for concurrent use —
++// wiring is expected to happen once at startup.
++func (r *Registry) Register(f Filter) {
++	r.filters = append(r.filters, f)
++}
++
++// Lookup returns the first filter that matches the invocation, or nil if
++// none do. A nil return means "pass-through" — callers must emit the raw
++// output unchanged.
++func (r *Registry) Lookup(cmd string, args []string) Filter {
++	for _, f := range r.filters {
++		if f.Match(cmd, args) {
++			return f
++		}
++	}
++	return nil
++}
++
++// Default returns a registry with all built-in filters registered in the
++// recommended order. Kept here so cmd/wafi does not need to know every
++// concrete filter type.
++func Default() *Registry {
++	r := New()
++	r.Register(GitStatus{})
++	return r
++}
