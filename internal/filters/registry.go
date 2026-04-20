@@ -42,5 +42,9 @@ func Default() *Registry {
 	r.Register(GitPush{})
 	r.Register(GitPull{})
 	r.Register(GitBranch{})
+	r.Register(NpmInstall{})
+	r.Register(PnpmInstall{})
+	r.Register(YarnInstall{})
+	r.Register(DockerBuild{})
 	return r
 }

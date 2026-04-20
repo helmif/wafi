@@ -1,0 +1,3 @@
+ WARN  deprecated uuid@3.4.0: Please upgrade to version 7 or higher.
+Packages: +123
+Progress: resolved 456, reused 333, downloaded 123, added 123, done

@@ -1,0 +1,2 @@
+yarn add v1.22.19
+error An unexpected error occurred: "https://registry.yarnpkg.com/nonexistent-package/-/nonexistent-package-1.0.0.tgz: Request failed \"404 Not Found\""

@@ -1,0 +1,9 @@
+[+] Building 5.2s (4/5)                                                        docker:default
+ => [1/2] FROM docker.io/library/node:18-alpine@sha256:abc123def456                      0.0s
+ => ERROR [2/2] RUN npm install nonexistent-package-xyz                                  3.1s
+------
+ > [2/2] RUN npm install nonexistent-package-xyz:
+0.821 npm error code E404
+0.821 npm error 404 Not Found - GET https://registry.npmjs.org/nonexistent-package-xyz
+------
+ERROR: failed to solve: process "/bin/sh -c npm install nonexistent-package-xyz" did not complete successfully: exit code: 1

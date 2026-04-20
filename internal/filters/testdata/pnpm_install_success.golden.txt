@@ -1,0 +1,2 @@
+Packages: +5
+Progress: resolved 287, reused 282, downloaded 5, added 5, done

@@ -1,0 +1,13 @@
+[+] Building 12.3s (8/8) FINISHED                                              docker:default
+ => [internal] load build definition from Dockerfile                                     0.0s
+ => => transferring dockerfile: 892B                                                     0.0s
+ => [internal] load metadata for docker.io/library/node:18-alpine                        2.1s
+ => [internal] load .dockerignore                                                         0.0s
+ => => transferring context: 2B                                                           0.0s
+ => [1/3] FROM docker.io/library/node:18-alpine@sha256:abc123def456                      0.0s
+ => [2/3] WORKDIR /app                                                                   0.0s
+ => [3/3] RUN npm ci                                                                     8.3s
+ => exporting to image                                                                   0.1s
+ => => exporting layers                                                                  0.1s
+ => => writing image sha256:deadbeef1234567890abcdef                                      0.0s
+ => => naming to docker.io/library/myapp:latest                                          0.0s
