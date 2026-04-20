@@ -6,7 +6,7 @@ All notable changes to wafi are documented here.
 
 ### Phase 7 — filesystem filters (2026-04-20)
 
-Added two filesystem filters.
+Added three filesystem filters.
 
 **ls** (`internal/filters/ls_filter.go`)
 - Matches: any `ls` invocation with a short `-l` flag (`-l`, `-la`, `-lh`, `-lR`, `-al`, etc.)
@@ -23,7 +23,15 @@ Added two filesystem filters.
 - Passthrough: ≤50 lines with no permission errors (already compact)
 - 6 test cases (match, passthrough at threshold, large truncation, denied stripping, combined, empty)
 
-Both filters registered in `Default()`.
+**grep / rg** (`internal/filters/grep_filter.go`)
+- Matches: `grep` and `rg`
+- Groups multi-file output by filename: `src/auth.go (3 matches)` header + `  N: content` per kept line
+- Limits context lines to max 2 before/after each match (excess `-C`/`-A`/`-B` context dropped)
+- Collapses binary-file notices to `[binary: path]`
+- Passthrough: unknown format (no filename/line-number prefix, no binary), empty output, single-file with ≤2 context already
+- 10 test cases (match, multi-file, context limiting, binary-only, binary mixed, no matches, single-file passthrough, single-file excess context, unknown format, `--` separator)
+
+All three filters registered in `Default()`.
 
 ---
 

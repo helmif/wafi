@@ -52,5 +52,6 @@ func Default() *Registry {
 	r.Register(CargoTest{})
 	r.Register(Ls{})
 	r.Register(Find{})
+	r.Register(Grep{})
 	return r
 }
