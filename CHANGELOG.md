@@ -2,7 +2,33 @@
 
 All notable changes to wafi are documented here.
 
-## [Unreleased] — v0.1.0
+## [0.1.0] — 2026-04-20
+
+### Phase 14 — docs & release (2026-04-20)
+
+- README with install, quick start, supported-commands table, how-it-works,
+  zero-risk guarantee.
+- SECURITY.md documenting threat model, what stays local, what wafi never does.
+- CONTRIBUTING.md with filter-addition workflow and PR checklist.
+- GitHub Actions: `ci.yml` (test, vet, coverage, five-platform build) and
+  `release.yml` (five-platform release build, SHA256 checksums, auto-notes
+  from CHANGELOG).
+- Version bumped from `0.1.0-dev` → `0.1.0`.
+
+### Phase 13 — testing infrastructure (2026-04-20)
+
+- Tests added for `cmd/wafi`, `internal/runner`, `internal/stash`,
+  `internal/testutil`, plus broader coverage in `internal/memory`.
+- All production packages ≥ 80% statement coverage. Filter package stays
+  at 94.9%.
+- Integration suite added under `integration/run_test.go` (build tag
+  `integration`): version string, `wafi run echo`, filtered `git status`
+  shorter than raw, `wafi doctor` no-panic check.
+- gosec clean (four known-benign `G204`/`G304` sites annotated with
+  `#nosec` + justification): runner's `exec.CommandContext` is wafi's
+  entire purpose, and the three `os.ReadFile` sites use
+  internally-constructed paths under XDG state dirs.
+- `go vet ./...` clean.
 
 ### Phase 7 — filesystem filters (2026-04-20)
 
