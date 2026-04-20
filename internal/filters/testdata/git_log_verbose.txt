@@ -1,0 +1,29 @@
+commit e409609efcc9f454bb53ca7cdf6b369d6ba975e2
+Author: helmif <xihelmy@gmail.com>
+Date:   Mon Apr 20 16:56:10 2026 +0700
+
+    phase-4: git diff filter (context lines dropped, headers preserved)
+    
+    Compresses unified diff by dropping context lines (space-prefixed) and
+    index hash lines. Keeps: diff --git headers, --- / +++ file lines, @@
+    hunk headers, +/- change lines, new/deleted/renamed file metadata,
+    Binary files notices. Unknown line → pass-through (zero-risk).
+    
+    7 real-output fixtures (clean, single, modified, multi, new, deleted,
+    renamed, binary) captured from wafi repo via actual git commands.
+    internal/filters coverage: 95.4%.
+    
+    Refs: ROADMAP.md Fase 4
+
+commit 277e73e283a42e5f2e1958217b48fece2bf44bd5
+Author: helmif <xihelmy@gmail.com>
+Date:   Mon Apr 20 16:33:47 2026 +0700
+
+    phase-3: git_status fixtures, golden tests, 96% filter coverage
+    
+    9 fixture scenarios (clean, dirty, staged, ahead, behind, diverged,
+    detached, conflict, malformed) + 9 passthrough edge cases covering all
+    bail-out paths. testutil.CheckGolden helper with -update flag.
+    internal/filters coverage: 96.2% (target was >80%).
+    
+    Refs: ROADMAP.md Fase 3

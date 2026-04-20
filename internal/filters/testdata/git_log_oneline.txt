@@ -1,0 +1,4 @@
+e409609 phase-4: git diff filter (context lines dropped, headers preserved)
+277e73e phase-3: git_status fixtures, golden tests, 96% filter coverage
+808412e phase-2: filter interface, registry, SafeApply
+2557981 phase-1: foundation (runner, stash, go.mod)

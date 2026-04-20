@@ -38,5 +38,6 @@ func Default() *Registry {
 	r := New()
 	r.Register(GitStatus{})
 	r.Register(GitDiff{})
+	r.Register(GitLog{})
 	return r
 }
