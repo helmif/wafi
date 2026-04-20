@@ -168,6 +168,97 @@ func TestSessionID_Sanitize(t *testing.T) {
 	}
 }
 
+func TestDir_XDGOverride(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/tmp/wafi-mem-test")
+	got, err := Dir()
+	if err != nil {
+		t.Fatalf("Dir: %v", err)
+	}
+	want := "/tmp/wafi-mem-test/wafi/sessions"
+	if got != want {
+		t.Fatalf("Dir=%q, want %q", got, want)
+	}
+}
+
+func TestDir_HomeFallback(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "")
+	got, err := Dir()
+	if err != nil {
+		t.Fatalf("Dir: %v", err)
+	}
+	if want := ".local/state/wafi/sessions"; !containsPath(got, want) {
+		t.Fatalf("Dir=%q missing suffix %q", got, want)
+	}
+}
+
+func TestLoad_PersistsAcrossReload(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", dir)
+	t.Setenv("WAFI_SESSION_ID", "persist-test")
+
+	s1, err := Load()
+	if err != nil {
+		t.Fatalf("Load1: %v", err)
+	}
+	if _, _, err := s1.RecordRead("file.go", []byte("hello")); err != nil {
+		t.Fatalf("RecordRead: %v", err)
+	}
+
+	s2, err := Load()
+	if err != nil {
+		t.Fatalf("Load2: %v", err)
+	}
+	if len(s2.Reads) != 1 {
+		t.Fatalf("expected 1 read after reload, got %d", len(s2.Reads))
+	}
+	if s2.ID != "persist-test" {
+		t.Fatalf("ID=%q, want persist-test", s2.ID)
+	}
+}
+
+func TestLoad_ClaudeSessionIDFallback(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", dir)
+	t.Setenv("WAFI_SESSION_ID", "")
+	t.Setenv("CLAUDE_SESSION_ID", "claude-xyz")
+
+	s, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if s.ID != "claude-xyz" {
+		t.Fatalf("ID=%q, want claude-xyz", s.ID)
+	}
+}
+
+func TestFallbackID_DeterministicShape(t *testing.T) {
+	t.Setenv("WAFI_SESSION_ID", "")
+	t.Setenv("CLAUDE_SESSION_ID", "")
+
+	id := sessionID()
+	if len(id) < len("fallback-") || id[:9] != "fallback-" {
+		t.Fatalf("expected fallback- prefix, got %q", id)
+	}
+}
+
+func TestTTYName_NoTTY(t *testing.T) {
+	// In `go test`, fds are usually pipes — ttyName should return "notty".
+	got := ttyName()
+	if got == "" {
+		t.Fatal("ttyName returned empty string")
+	}
+	// Don't assert exact value; just exercise the path without panicking.
+}
+
+func containsPath(full, suffix string) bool {
+	for i := 0; i+len(suffix) <= len(full); i++ {
+		if full[i:i+len(suffix)] == suffix {
+			return true
+		}
+	}
+	return false
+}
+
 // newTestSession creates an in-memory session backed by a temp dir.
 func newTestSession(t *testing.T) *Session {
 	t.Helper()

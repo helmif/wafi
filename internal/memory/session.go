@@ -110,6 +110,8 @@ func Load() (*Session, error) {
 
 	path := filepath.Join(dir, id+".json")
 
+	// #nosec G304 -- `path` is composed from a sanitized id (sanitize()) under
+	// a fixed XDG state dir; no user-supplied path component reaches here.
 	data, err := os.ReadFile(path)
 	if err == nil {
 		var s Session
