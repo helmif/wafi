@@ -50,5 +50,7 @@ func Default() *Registry {
 	r.Register(Jest{})
 	r.Register(Vitest{})
 	r.Register(CargoTest{})
+	r.Register(Ls{})
+	r.Register(Find{})
 	return r
 }

@@ -4,6 +4,29 @@ All notable changes to wafi are documented here.
 
 ## [Unreleased] — v0.1.0
 
+### Phase 7 — filesystem filters (2026-04-20)
+
+Added two filesystem filters.
+
+**ls** (`internal/filters/ls_filter.go`)
+- Matches: any `ls` invocation with a short `-l` flag (`-l`, `-la`, `-lh`, `-lR`, `-al`, etc.)
+- Keeps: filenames, sizes (converted to human-readable B/K/M/G), directories marked with `/`, symlink arrows (`link -> target`)
+- Drops: `total N` line, `.`/`..` entries, permissions string, link count, owner, group, timestamp
+- Handles: `-h` pre-formatted sizes (pass-through), old files with year instead of time, `-lR` recursive section headers, empty dirs → `(empty)`
+- Passthrough: no long-format lines detected in output
+- 9 test cases (match, 6 apply variants, recursive)
+
+**find** (`internal/filters/find_filter.go`)
+- Matches: any `find` invocation
+- Keeps: matched paths (up to 40 when truncating), truncation summary `... (+N more)`, permission-denied count note
+- Drops: `find: ... Permission denied` / `Operation not permitted` lines (counted, reported at end)
+- Passthrough: ≤50 lines with no permission errors (already compact)
+- 6 test cases (match, passthrough at threshold, large truncation, denied stripping, combined, empty)
+
+Both filters registered in `Default()`.
+
+---
+
 ### Phase 6 — test runner filters (2026-04-20)
 
 Added four filters for test runners.

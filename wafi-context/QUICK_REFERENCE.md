@@ -43,7 +43,7 @@ Single binary. Audited by author.
    - git_branch: strip remotes/ prefix, drop HEAD pointer lines
 5. ✅ Package managers (npm, pnpm, yarn, docker) — DONE
 6. ✅ Test runners (go test, jest, vitest, cargo test) — DONE
-7. Filesystem (ls, find, grep, diff)
+7. 🔄 Filesystem (ls, find, grep, diff) — ls ✅, find ✅, grep TODO, diff TODO
 8. Anti-repeated-read
 9. Token ledger
 10. Stash viewer
