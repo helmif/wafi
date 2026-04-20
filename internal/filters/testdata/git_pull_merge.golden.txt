@@ -1,0 +1,6 @@
+From github.com:helmif/wafi
+   abc1234..fed9876  main -> origin/main
+Merge made by the 'ort' strategy.
+ docs/API.md | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+ create mode 100644 docs/API.md

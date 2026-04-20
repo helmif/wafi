@@ -1,0 +1,5 @@
+* main
+  feature/auth
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/feature/auth
+  remotes/origin/main

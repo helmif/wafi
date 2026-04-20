@@ -1,0 +1,6 @@
+remote:
+remote: Create a pull request for 'feature/auth' on GitHub by visiting:
+remote:   https://github.com/helmif/wafi/pull/new/feature/auth
+remote:
+To github.com:helmif/wafi.git
+ * [new branch]      feature/auth -> feature/auth
