@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Personal / local reference docs (not part of the public repo)
+wafi-context/
+
+# Build artifacts
+dist/
+*.log
+
+# Go tooling
+*.test
+*.out
