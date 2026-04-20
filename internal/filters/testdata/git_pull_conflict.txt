@@ -1,0 +1,10 @@
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 2), reused 0 (delta 0), pack-reused 0
+Unpacking objects: 100% (3/3), 892 bytes | 892.00 KiB/s, done.
+From github.com:helmif/wafi
+   abc1234..def5678  main -> origin/main
+Auto-merging internal/filters/git_status.go
+CONFLICT (content): Merge conflict in internal/filters/git_status.go
+Automatic merge failed; fix conflicts and then commit the result.

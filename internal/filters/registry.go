@@ -39,5 +39,8 @@ func Default() *Registry {
 	r.Register(GitStatus{})
 	r.Register(GitDiff{})
 	r.Register(GitLog{})
+	r.Register(GitPush{})
+	r.Register(GitPull{})
+	r.Register(GitBranch{})
 	return r
 }

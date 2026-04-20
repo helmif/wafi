@@ -1,0 +1,5 @@
+From github.com:helmif/wafi
+   abc1234..def5678  main -> origin/main
+Auto-merging internal/filters/git_status.go
+CONFLICT (content): Merge conflict in internal/filters/git_status.go
+Automatic merge failed; fix conflicts and then commit the result.

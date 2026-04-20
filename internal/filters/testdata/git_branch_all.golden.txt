@@ -1,0 +1,4 @@
+* main
+  feature/auth
+  [origin] feature/auth
+  [origin] main
