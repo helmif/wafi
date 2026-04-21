@@ -11,3 +11,4 @@ dist/
 .claude/settings.local.json
 # Personal planning docs
 wafi-context/
+# Cleaned contributor history
